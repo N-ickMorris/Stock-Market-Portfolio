@@ -3,12 +3,7 @@
 # -----------------------------------------------------------------------------------
 
 # set the path of where the input files are
-mywd = list("C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio",
-            "C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio/yahoo-margin-10",
-            "C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio/yahoo-margin-25",
-            "C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio/yahoo-margin-50",
-            "C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio/yahoo-margin-75",
-            "C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio/yahoo-margin-100")
+mywd = list("C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio")
 
 # -----------------------------------------------------------------------------------
 # ---- Packages ---------------------------------------------------------------------
