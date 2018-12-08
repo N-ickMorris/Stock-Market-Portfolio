@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------------
 
 # set the path of where the input files are
-mywd = list("C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio")
+mywd = list("C:/ ... /Portfolio")
 
 # -----------------------------------------------------------------------------------
 # ---- Packages ---------------------------------------------------------------------
