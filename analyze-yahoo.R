@@ -2,14 +2,13 @@
 # ---- Input Information ------------------------------------------------------------
 # -----------------------------------------------------------------------------------
 
-# set the path for the yahoo prices to be placed
-prices.wd = "C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio/prices"
-
-# set the path for the yahoo.csv to be placed
-yahoo.wd = "C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio"
-
-# set the path for the mad.csv to be placed
-mad.wd = "C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio/mad-results"
+# set the path of where the input files are
+mywd = list("C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio",
+            "C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio/yahoo-margin-10",
+            "C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio/yahoo-margin-25",
+            "C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio/yahoo-margin-50",
+            "C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio/yahoo-margin-75",
+            "C:/Users/Nick Morris/Downloads/Data-Science/Projects/Stock-Market-Portfolio-Optimization/Models/Portfolio/yahoo-margin-100")
 
 # -----------------------------------------------------------------------------------
 # ---- Packages ---------------------------------------------------------------------
@@ -161,15 +160,57 @@ ampl = function(dat, object = "param", name = "c")
 
 {
 
-# disable the yahoo warning message
-options("getSymbols.yahoo.warning" = FALSE)
-options("getSymbols.warning4.0" = FALSE)
-
 # set the work directory
-setwd(prices.wd)
+setwd(mywd[[1]])
 
-# extract all of the known symbols from stockSymbols
-symbols = as.character(sort(unique(stockSymbols()$Symbol)))
+# do we need to clean up the symbols?
+clean.symbols = FALSE
+
+if(clean.symbols)
+{
+  # extract all of the known symbols from stockSymbols
+  symbols = as.character(sort(unique(stockSymbols()$Symbol)))
+  
+  # lets find out which symbols throw errors
+  count = count - 1
+  pass = FALSE
+  while(count <= length(symbols))
+  {
+    # increment
+    count = count + 1
+    
+    # get symbol s
+    s = symbols[count]
+    
+    # see if symbol s can be found
+    x = data.frame(Cl(getSymbols(s, src = "yahoo", auto.assign = FALSE)))
+    
+    # if count reached its max then all symbols passed the test
+    if(count == length(symbols))
+    {
+      pass = TRUE
+    }
+  }
+  
+  pass
+  count
+  symbols[count]
+  length(symbols)
+  
+  # if we didn't pass then remove the symbol that failed
+  if(!pass)
+  {
+    symbols = symbols[-count]
+  }
+  
+  # save this vector of symbols
+  write.csv(data.table(symbols), "getSymbols.csv", row.names = FALSE)
+  
+} else
+{
+  # import symbols
+  symbols = as.character(unlist(data.table(read.csv("getSymbols.csv"))))
+}
 
 # do we need to get the company names?
 get.names = FALSE
@@ -221,9 +262,6 @@ if(get.names)
     require(data.table)
     require(quantmod)
     
-    # disable the yahoo warning message
-    options("getSymbols.yahoo.warning" = FALSE)
-    
     # get symbol s
     s = symbols[i]
     
@@ -234,7 +272,6 @@ if(get.names)
     if(is.null(dim(na.omit(close))))
     {
       close = data.table(close = NA, date = NA, symbol = s)
-      fwrite(x = close, file = paste0(s, ".csv"))
       
     } else
     {
@@ -248,8 +285,6 @@ if(get.names)
       close[, date := dates]
       close[, symbol := s]
       setnames(close, c("close", "date", "symbol"))
-      
-      fwrite(x = close, file = paste0(s, ".csv"))
     }
     
     # free memory
@@ -274,24 +309,11 @@ if(get.names)
     stopCluster(cl)
   }
   
-  # get all price file names (while ignoring myfile)
-  price.files = list.files()
-  price.files = price.files[-which(price.files == myfile)]
-  
-  # read in the files
-  prices = lapply(price.files, function(p) fread(p))
-  
   # convert prices into one table
   prices = rbindlist(prices)
   
-  # set the work directory for yahoo.csv
-  setwd(yahoo.wd)
-  
   # save this vector of symbols
-  fwrite(prices, "yahoo.csv")
-  
-  # set the work directory
-  setwd(prices.wd)
+  write.csv(prices, "yahoo.csv", row.names = FALSE)
   
   # choose the number of workers and tasks for parallel processing
   workers = max(1, floor((3/4) * detectCores()))
@@ -362,11 +384,8 @@ if(get.names)
   # make names into a data table
   names = data.table(symbol = symbols, name = names)
   
-  # set the work directory for yahoo.csv
-  setwd(yahoo.wd)
-  
   # save this table
-  fwrite(names, "getName.csv")
+  write.csv(names, "getName.csv", row.names = FALSE)
   
   # add an id column to preserve row order
   prices[, id := 1:nrow(prices)]
@@ -382,293 +401,96 @@ if(get.names)
   # remove id as a column
   prices[, id := NULL]
   
-  # compute percent change in prices day to day for each symbol
-  prices = prices[, .(date = date,
-                      close = close,
-                      change = abs((close / shift(close, 1)) - 1)),
-                  by = .(symbol, name)]
-  
-  # remove any days that had a change larger than 50%
-  prices = prices[change <= 0.50]
-  
-  # compute percent change in prices day to day for each symbol
-  prices = prices[, .(date = date,
-                      close = close,
-                      change = abs((close / shift(close, 1)) - 1)),
-                  by = .(symbol, name)]
-  
-  # remove any days that had a change larger than 50%
-  prices = prices[change <= 0.50]
-  
-  # compute percent change in prices day to day for each symbol
-  prices = prices[, .(date = date,
-                      close = close,
-                      change = abs((close / shift(close, 1)) - 1)),
-                  by = .(symbol, name)]
-  
-  # remove any days that had a change larger than 50%
-  prices = prices[change <= 0.50]
-  
-  # compute percent change in prices day to day for each symbol
-  prices = prices[, .(date = date,
-                      close = close,
-                      change = abs((close / shift(close, 1)) - 1)),
-                  by = .(symbol, name)]
-  
-  # remove any days that had a change larger than 50%
-  prices = prices[change <= 0.50]
-  
-  # compute percent change in prices day to day for each symbol
-  prices = prices[, .(date = date,
-                      close = close,
-                      change = abs((close / shift(close, 1)) - 1)),
-                  by = .(symbol, name)]
-  
-  # remove any days that had a change larger than 50%
-  prices = prices[change <= 0.50]
-  
-  # remove change
-  prices = prices[, change := NULL]
-  
   # save this table
-  fwrite(prices, "yahoo.csv")
+  write.csv(prices, "yahoo.csv", row.names = FALSE)
   
 } else
 {
-  prices = fread("yahoo.csv")
+  prices = data.table(read.csv("yahoo.csv", stringsAsFactors = FALSE))
 }
 
-# so we need to compute log differences?
-compute.logs = FALSE
+# remove year, logDiff, and meanLogDiff
+prices[, year := NULL]
+prices[, logDiff := NULL]
+prices[, meanLogDiff := NULL]
 
-if(compute.logs)
+# update date
+prices[, DATE := as.Date(paste(substr(date, 1, 4), substr(date, 5, 6), substr(date, 7, 8), sep = "-"))]
+
+# only keep closing prices every 2 weeks
+keep.dates = seq.Date(from = min(prices$DATE), to = max(prices$DATE), by = "2 weeks")
+
+# remove the last date in keep.dates
+keep.dates = head(keep.dates, length(keep.dates) - 1)
+
+# only keep the dates of interest
+prices = prices[DATE %in% keep.dates]
+
+# split up prices into: all-year, 8-year, and 5-year data sets
+date.8 = max(prices$DATE) - (365 * 8)
+prices.8 = data.table(prices[DATE >= date.8])
+
+date.5 = max(prices$DATE) - (365 * 5)
+prices.5 = data.table(prices[DATE >= date.5])
+
+# remove DATE from price tables
+prices[, DATE := NULL]
+prices.8[, DATE := NULL]
+prices.5[, DATE := NULL]
+
+# compute log differences for prices
+prices.update = lapply(unique(prices$name), function(i)
 {
-  # get the year from date
-  prices[, year := as.numeric(substr(date, 1, 4))]
+  # get the data for company i
+  DT = data.table(prices[name == i])
   
-  # lets loop through each company and compute the logDiff and meanLogDiff
-  # create a name for a .txt file to log progress information while parallel processing
-  myfile = "log.txt"
-  file.create(myfile)
+  # compute logDiff
+  DT[, logDiff := c(NA, diff(log(close)))]
   
-  # choose the number of workers and tasks for parallel processing
-  workers = max(1, floor((3/4) * detectCores()))
-  tasks = length(unique(prices$name))
+  # compute meanLogDiff
+  DT[, meanLogDiff := mean(logDiff, na.rm = TRUE)]
   
-  # set up a cluster if workers > 1, otherwise don't set up a cluster
-  if(workers > 1)
-  {
-    # setup parallel processing
-    cl = makeCluster(workers, type = "SOCK", outfile = "")
-    registerDoSNOW(cl)
-    
-    # define %dopar%
-    `%fun%` = `%dopar%`
-    
-    # write out start time to log file
-    sink(myfile, append = TRUE)
-    cat("\n------------------------------------------------\n")
-    cat("computing log return\n")
-    cat(paste(workers, "workers started at", Sys.time(), "\n"))
-    sink()
-    
-  } else
-  {
-    # define %do%
-    `%fun%` = `%do%`
-    
-    # write out start time to log file
-    sink(myfile, append = TRUE)
-    cat("\n------------------------------------------------\n")
-    cat("computing log return\n")
-    cat(paste("task 1 started at", Sys.time(), "\n"))
-    sink()
-  }
-  
-  # compute logDiff and meanLogDiff
-  prices.update = foreach(i = 1:tasks) %fun%
-  {
-    # load packages
-    require(data.table)
-    
-    # get the company name
-    company = sort(unique(prices$name))[i]
-    
-    # get the data for company
-    DT = data.table(prices[name == company])
-    
-    # compute logDiff
-    DT[, logDiff := c(NA, diff(log(close)))]
-    
-    # compute meanLogDiff
-    DT.avg = data.table(DT[, .(meanLogDiff = mean(logDiff, na.rm = TRUE)), by = .(year)])
-    
-    # give DT an id column to maintain its original order
-    DT[, id := 1:nrow(DT)]
-    
-    # join DT.avg onto DT
-    setkey(DT.avg, year)
-    setkey(DT, year)
-    DT = DT.avg[DT]
-    
-    # order DT by id
-    DT = DT[order(id)]
-    
-    # remove id
-    DT[, id := NULL]
-    
-    # free memory
-    gc()
-    
-    # export progress information
-    sink(myfile, append = TRUE)
-    cat(paste("task", i, "of", tasks, "finished at", Sys.time(), "\n"))
-    sink()
-    
-    return(DT)
-  }
-  
-  # write out end time to log file
-  sink(myfile, append = TRUE)
-  cat(paste(tasks, "tasks finished at", Sys.time(), "\n"))
-  sink()
-  
-  # end the cluster if it was set up
-  if(workers > 1)
-  {
-    stopCluster(cl)
-  }
-  
-  # convert prices.update into one table
-  prices = na.omit(rbindlist(prices.update))
-  
-  # write out yahoo
-  fwrite(prices, "yahoo.csv")
-}
+  return(na.omit(DT))
+})
 
-# do we need to reduce the number of symbols?
-reduce.symbols = FALSE
+# combine the list of tables back into one table
+prices = rbindlist(prices.update)
 
-if(reduce.symbols)
+# compute log differences for prices.8
+prices.8.update = lapply(unique(prices.8$name), function(i)
 {
-  # convert date into a date type
-  prices[, date := as.Date(date)]
+  # get the data for company i
+  DT = data.table(prices.8[name == i])
   
-  # order by symbol
-  prices = prices[order(symbol)]
+  # compute logDiff
+  DT[, logDiff := c(NA, diff(log(close)))]
   
-  # find the start and end date of every symbol and name to identify any inconsistencies
-  check = data.table(prices[,.(start = min(date), end = max(date)), by = .(name, symbol)])
+  # compute meanLogDiff
+  DT[, meanLogDiff := mean(logDiff, na.rm = TRUE)]
   
-  # count how many symbols that belong to each name becuase there are more symbols than names currently
-  check[, count := sapply(1:nrow(check), function(i) length(unique(unname(unlist(check[name == check$name[i], .(symbol)])))))]
-  
-  # extract the subset of check that has repeated names
-  check.name = data.table(check[count > 1])
-  
-  # compute the number of days that each name has with each symbol
-  check.name[, days := as.numeric(difftime(end, start, units = "days"))]
-  
-  # get all unique names from check.name
-  names = unique(check.name$name)
-  
-  # loop through each name and only extract the symbol associated with the largest number of days
-  keep.symbol = unname(sapply(names, function(n)
-  {
-    # find which symbol has the max number of days
-    position = which.max(unlist(check.name[name == n, .(days)]))
-    
-    # get the symbol
-    sym = unname(unlist(check.name[name == n, .(symbol)]))[position]  
-    
-    return(sym)
-  }))
-  
-  # get the symbols to remove
-  remove.symbol = unname(unlist(check.name[!(symbol %in% keep.symbol), .(symbol)]))
-  
-  # remove these symbols from prices
-  prices = prices[!(symbol %in% remove.symbol)]
-  
-  # update the name column to have no spacing or punctuation and be all capitalized
-  prices[, name2 := toupper(gsub(" ", "", removeNumbers(removePunctuation(name)), fixed = TRUE))]
-  
-  # find the start and end date of every symbol and name2 to identify any inconsistencies
-  check = data.table(prices[,.(start = min(date), end = max(date)), by = .(name2, symbol)])
-  
-  # count how many symbols that belong to each name2 becuase there are more symbols than names currently
-  check[, count := sapply(1:nrow(check), function(i) length(unique(unname(unlist(check[name2 == check$name2[i], .(symbol)])))))]
-  
-  # extract the subset of check that has repeated names
-  check.name2 = data.table(check[count > 1])
-  
-  # compute the number of days that each name2 has with each symbol
-  check.name2[, days := as.numeric(difftime(end, start, units = "days"))]
-  
-  # get all unique names from check.name2
-  names = unique(check.name2$name2)
-  
-  # loop through each name2 and only extract the symbol associated with the largest number of days
-  keep.symbol = unname(sapply(names, function(n)
-  {
-    # find which symbol has the max number of days
-    position = which.max(unlist(check.name2[name2 == n, .(days)]))
-    
-    # get the symbol
-    sym = unname(unlist(check.name2[name2 == n, .(symbol)]))[position]  
-    
-    return(sym)
-  }))
-  
-  # get the symbols to remove
-  remove.symbol = unname(unlist(check.name2[!(symbol %in% keep.symbol), .(symbol)]))
-  
-  # remove these symbols from prices
-  prices = prices[!(symbol %in% remove.symbol)]
-  
-  # update the name column of prices
-  prices[, name := name2]
-  prices[, name2 := NULL]
-  
-  # update the date column to have no dashes
-  prices[, date := gsub("-", "", date)]
-  
-  # write out yahoo
-  fwrite(prices, "yahoo.csv")
-  
-  # remove unneded objects
-  rm(check, check.name, check.name2, keep.symbol, remove.symbol, names)
-}
+  return(na.omit(DT))
+})
 
-# do we need to update the mean computations?
-update.means = FALSE
+# combine the list of tables back into one table
+prices.8 = rbindlist(prices.8.update)
 
-if(update.means)
+# compute log differences for prices.5
+prices.5.update = lapply(unique(prices.5$name), function(i)
 {
-  # remove the means column
-  prices[, meanLogDiff := NULL]
+  # get the data for company i
+  DT = data.table(prices.5[name == i])
   
-  # give prices an id column to maintain its original order
-  prices[, id := 1:nrow(prices)]
+  # compute logDiff
+  DT[, logDiff := c(NA, diff(log(close)))]
   
-  # compute annual averages of logDiff for each company
-  avg = data.table(prices[, .(meanLogDiff = mean(logDiff)), by = .(symbol, year)])
+  # compute meanLogDiff
+  DT[, meanLogDiff := mean(logDiff, na.rm = TRUE)]
   
-  # join avg onto prices
-  setkey(avg, symbol, year)
-  setkey(prices, symbol, year)
-  prices = avg[prices]
-  
-  # order prices by id
-  prices = prices[order(id)]
-  prices[, id := NULL]
-  
-  # write out yahoo
-  fwrite(prices, "yahoo.csv")
-  
-  # remove unneded objects
-  rm(avg)
-}
+  return(na.omit(DT))
+})
+
+# combine the list of tables back into one table
+prices.5 = rbindlist(prices.5.update)
 
 }
 
@@ -678,31 +500,28 @@ if(update.means)
 
 {
 
-# should we export the yahoo data for the semi mad lp?
+# all
+margins = c(400, 800, 1400, 2000) / 100
+
+# 8
+margins.8 = c(200, 400, 700, 1000) / 100
+
+# 5
+margins.5 = c(100, 200, 350, 500) / 100
+
+# should we export the yahoo data for the mad lp?
 export.yahoo = FALSE
 
 if(export.yahoo)
 {
-  # extract all of the years from prices
-  yrs = unique(prices$year)
-  
-  # set the desired profit margins (ie. 0.3 = 30% annual return)
-  margins = seq(0.1, 1, 0.05)
-  
-  # create all portfolio combinations
-  ports = data.table(expand.grid(year = yrs, margin = margins))
+  # set the work directory
+  setwd(mywd[[1]])
   
   # write out an ampl data file for each year in prices
-  lapply(1:nrow(ports), function(i)
+  lapply(margins, function(m)
   {
-    # get the year from ports
-    y = ports$year[i]
-    
-    # get the margin from ports
-    m = ports$margin[i]
-    
     # extract year y from prices
-    dat = data.table(prices[year == y])
+    dat = data.table(prices)
     
     # create a subset of dat with just name and meanLogDiff
     dat.mean = data.table(dat[,.(name, meanLogDiff)])
@@ -710,100 +529,253 @@ if(export.yahoo)
     # remove all duplicates in dat.mean
     dat.mean = dat.mean[!duplicated(dat.mean)]
     
-    # write out the set of days for year y
+    # write out the set of days for margin m
     write.table(ampl(unique(dat$date), object = "set", name = "time"), 
-                file = paste0("mad-yahoo-", y, "-", m * 100, ".dat"), 
+                file = paste0("mad-yahoo-all-", m * 100, ".dat"), 
                 quote = FALSE,
                 row.names = FALSE)
     
-    # write out the set of names for year y
+    # write out the set of names for margin m
     write.table(ampl(unique(dat$name), object = "set", name = "stocks"), 
-                file = paste0("mad-yahoo-", y, "-", m * 100, ".dat"), 
+                file = paste0("mad-yahoo-all-", m * 100, ".dat"), 
                 quote = FALSE,
                 row.names = FALSE,
                 append = TRUE)
     
-    # write out the parameter of diff(log(price)) for year y
+    # write out the parameter of diff(log(price)) for margin m
     write.table(ampl(dat[,.(name, date, logDiff)], object = "param", name = "diffLog"), 
-                file = paste0("mad-yahoo-", y, "-", m * 100, ".dat"), 
+                file = paste0("mad-yahoo-all-", m * 100, ".dat"), 
                 quote = FALSE,
                 row.names = FALSE,
                 append = TRUE)
     
-    # write out the parameter of mean(diff(log(price))) for year y
+    # write out the parameter of mean(diff(log(price))) for margin m
     write.table(ampl(dat.mean, object = "param", name = "meanDiffLog"), 
-                file = paste0("mad-yahoo-", y, "-", m * 100, ".dat"), 
+                file = paste0("mad-yahoo-all-", m * 100, ".dat"), 
                 quote = FALSE,
                 row.names = FALSE,
                 append = TRUE)
     
-    # write out the parameter of profit margin for year y
+    # write out the parameter of profit margin for margin m
     write.table(ampl(log(m + 1), object = "param", name = "logMarginPlusOne"), 
-                file = paste0("mad-yahoo-", y, "-", m * 100, ".dat"), 
+                file = paste0("mad-yahoo-all-", m * 100, ".dat"), 
                 quote = FALSE,
                 row.names = FALSE,
                 append = TRUE)
   })
+  
+  # write out an ampl data file for each year in prices.8
+  lapply(margins.8, function(m)
+  {
+    # extract year y from prices
+    dat = data.table(prices.8)
+    
+    # create a subset of dat with just name and meanLogDiff
+    dat.mean = data.table(dat[,.(name, meanLogDiff)])
+    
+    # remove all duplicates in dat.mean
+    dat.mean = dat.mean[!duplicated(dat.mean)]
+    
+    # write out the set of days for margin m
+    write.table(ampl(unique(dat$date), object = "set", name = "time"), 
+                file = paste0("mad-yahoo-8-", m * 100, ".dat"), 
+                quote = FALSE,
+                row.names = FALSE)
+    
+    # write out the set of names for margin m
+    write.table(ampl(unique(dat$name), object = "set", name = "stocks"), 
+                file = paste0("mad-yahoo-8-", m * 100, ".dat"), 
+                quote = FALSE,
+                row.names = FALSE,
+                append = TRUE)
+    
+    # write out the parameter of diff(log(price)) for margin m
+    write.table(ampl(dat[,.(name, date, logDiff)], object = "param", name = "diffLog"), 
+                file = paste0("mad-yahoo-8-", m * 100, ".dat"), 
+                quote = FALSE,
+                row.names = FALSE,
+                append = TRUE)
+    
+    # write out the parameter of mean(diff(log(price))) for margin m
+    write.table(ampl(dat.mean, object = "param", name = "meanDiffLog"), 
+                file = paste0("mad-yahoo-8-", m * 100, ".dat"), 
+                quote = FALSE,
+                row.names = FALSE,
+                append = TRUE)
+    
+    # write out the parameter of profit margin for margin m
+    write.table(ampl(log(m + 1), object = "param", name = "logMarginPlusOne"), 
+                file = paste0("mad-yahoo-8-", m * 100, ".dat"), 
+                quote = FALSE,
+                row.names = FALSE,
+                append = TRUE)
+  })
+  
+  # write out an ampl data file for each year in prices.5
+  lapply(margins.5, function(m)
+  {
+    # extract year y from prices
+    dat = data.table(prices.5)
+    
+    # create a subset of dat with just name and meanLogDiff
+    dat.mean = data.table(dat[,.(name, meanLogDiff)])
+    
+    # remove all duplicates in dat.mean
+    dat.mean = dat.mean[!duplicated(dat.mean)]
+    
+    # write out the set of days for margin m
+    write.table(ampl(unique(dat$date), object = "set", name = "time"), 
+                file = paste0("mad-yahoo-5-", m * 100, ".dat"), 
+                quote = FALSE,
+                row.names = FALSE)
+    
+    # write out the set of names for margin m
+    write.table(ampl(unique(dat$name), object = "set", name = "stocks"), 
+                file = paste0("mad-yahoo-5-", m * 100, ".dat"), 
+                quote = FALSE,
+                row.names = FALSE,
+                append = TRUE)
+    
+    # write out the parameter of diff(log(price)) for margin m
+    write.table(ampl(dat[,.(name, date, logDiff)], object = "param", name = "diffLog"), 
+                file = paste0("mad-yahoo-5-", m * 100, ".dat"), 
+                quote = FALSE,
+                row.names = FALSE,
+                append = TRUE)
+    
+    # write out the parameter of mean(diff(log(price))) for margin m
+    write.table(ampl(dat.mean, object = "param", name = "meanDiffLog"), 
+                file = paste0("mad-yahoo-5-", m * 100, ".dat"), 
+                quote = FALSE,
+                row.names = FALSE,
+                append = TRUE)
+    
+    # write out the parameter of profit margin for margin m
+    write.table(ampl(log(m + 1), object = "param", name = "logMarginPlusOne"), 
+                file = paste0("mad-yahoo-5-", m * 100, ".dat"), 
+                quote = FALSE,
+                row.names = FALSE,
+                append = TRUE)
+  })
+  
 }
 
 }
 
 # -----------------------------------------------------------------------------------
-# ---- Prepare MAD Results ----------------------------------------------------------
+# ---- Analyze MAD LP Results -------------------------------------------------------
 # -----------------------------------------------------------------------------------
 
 {
 
-# set the work directory
-setwd(mad.wd)
+# set up the names of the result files
+results.files = c("mad-yahoo-5-100-results.txt", "mad-yahoo-5-200-results.txt", "mad-yahoo-5-350-results.txt", "mad-yahoo-5-500-results.txt",
+                  "mad-yahoo-8-200-results.txt", "mad-yahoo-8-400-results.txt", "mad-yahoo-8-700-results.txt", "mad-yahoo-8-1000-results.txt", 
+                  "mad-yahoo-all-400-results.txt", "mad-yahoo-all-800-results.txt", "mad-yahoo-all-1400-results.txt", "mad-yahoo-all-2000-results.txt")
 
-# set the years being evaluated
-yrs = 2009:2017
+# set up the year spans of the result files
+yrs = c(rep(5, 4), rep(8, 4), rep(11, 4))
 
-# set the margins being evaluated
-margins = seq(0.1, 1, 0.05)
+# set up the margins of the result files
+mars = c(100, 200, 350, 500, 200, 400, 700, 1000, 400, 800, 1400, 2000)
 
-# create all portfolio combinations
-ports = data.table(expand.grid(year = yrs, margin = margins))
-
-# import the results data from each work directory
-dat = lapply(1:nrow(ports), function(i)
+# import results
+results = lapply(1:length(results.files), function(r)
 {
-  # get the year from ports
-  y = ports$year[i]
+  # read in result file r
+  DT = data.table(read.delim(results.files[r], sep = ",", stringsAsFactors = FALSE, row.names = NULL))
   
-  # get the margin from ports
-  m = ports$margin[i]
+  # rename the columns of DT
+  setnames(DT, c("variable", "name", "value"))
   
-  # import the results file
-  output = fread(paste0("mad-yahoo-", y, "-", m * 100, "-results.txt"), sep = ",")
+  # add a yearSpan column
+  DT[, yearSpan := yrs[r]]
   
-  # rename the columns
-  setnames(output, c("variable", "name", "value"))
+  # add a margin column
+  DT[, margin := mars[r]]
   
-  # add the year and margin
-  output[, year := y]
-  output[, margin := m * 100]
-  
-  return(output)
+  return(DT)
 })
 
-# combine the list of data tables into 1 table
-dat = rbindlist(dat)
+# combine the list of tables into one table
+results = rbindlist(results)
+  
+# only keep portion > 0
+results = results[variable == "portion" & value > 0]
 
-# export dat
-setwd(yahoo.wd)
-fwrite(dat, "mad.csv")
+# order results by yearSpan, margin, and value
+results = results[order(-yearSpan, -margin, -value)]
+
+# give results an id column
+results[, id := 1:nrow(results)]
+
+# remove variable
+results[, variable := NULL]
+
+# get the symbol and names from prices
+symbol.mapping = data.table(prices[,.(name, symbol)])
+
+# remove duplicates from symbol.mapping
+symbol.mapping = symbol.mapping[!duplicated(symbol.mapping)]
+
+# remove the space before every name in results
+results[, name := substr(results$name, 2, 1000)]
+
+# join symbol.mapping onto results
+setkey(results, name)
+setkey(symbol.mapping, name)
+results = symbol.mapping[results]
+
+# compute the variance of the logDiff for each company in prices
+log.var = data.table(prices[,.(name, logDiff)])
+log.var = log.var[, .(varLogDiff = var(logDiff)), by = .(name)]
+
+# join log.var onto results
+setkey(results, name)
+setkey(log.var, name)
+results = log.var[results]
+
+# order results by id
+results = results[order(id)]
+
+# compute the reciprical of varLogDiff
+results[, recipVarLogDiff := 1 / varLogDiff]
+
+# rescale value and recipVarLogDiff to have the same bounds
+results[, scaleRVLD := rescale(recipVarLogDiff, to = c(1, 99))]
+results[, scaleV := rescale(value, to = c(1, 99))]
+
+# multiple scaleRVLD and scaleV to create an index for finding companies with low variances and high values
+results[, index := scaleV * scaleRVLD]
+
+# sum up the index by name to rank comapanies
+index = data.table(results[,.(name, index, symbol)])
+index = index[,.(rank = sum(index)), by = .(name, symbol)]
+
+# order index by rank
+index = index[order(-rank)]
+
+# rescale rank
+index[, rank := rescale(rank, to = c(1, 99))]
+
+# get the last known price of each company from prices
+last.price = data.table(prices)
+last.price = last.price[, .(close = tail(close, 1), date = tail(date, 1)), by = .(name)]
+last.price[, date := as.Date(paste(substr(date, 1, 4), substr(date, 5, 6), substr(date, 7, 8), sep = "-"))]
+
+# join last.price onto index
+setkey(last.price, name)
+setkey(index, name)
+index = last.price[index]
+
+# order index by rank
+index = index[order(-rank)]
+
+# write out index
+fwrite(index, "stock index.csv")
+
+# check out the topp 100 companies that cost less than $125 per share
+head(index[close < 125], 100)
 
 }
-
-
-
-
-
-
-
-
-
-
 
