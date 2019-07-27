@@ -6,11 +6,8 @@ import os
 import pandas as pd
 import numpy as np
 import gc
-import re
-import json
 from timeit import default_timer
 from datetime import datetime
-from datetime import date
 from datetime import timedelta
 
 # finance modules
@@ -18,24 +15,11 @@ from yahoofinancials import YahooFinancials
 import cpi
 cpi.update()
 
-# data modeling modules
-from psutil import cpu_count
-import h2o
-
 # miscellaneous modules
 import warnings
 
 # set the work directory
 os.chdir(mywd)
-
-# data science modules
-import data_cleansing
-import feature_engineering
-import machine_learning
-import data_visualization
-
-# do we need to build stock data?
-build_data = False
 
 # should we hide warning messages?
 hide_warnings = True
