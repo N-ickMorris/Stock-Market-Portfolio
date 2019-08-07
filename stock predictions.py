@@ -61,6 +61,7 @@ timestamp_arch_features, timestamp_glrm_mod, timestamp_glrm_error, timestamp_wap
                                                                                                                                                                               initialize_h2o = True, 
                                                                                                                                                                               shutdown_h2o = False, 
                                                                                                                                                                               display_progress = True)
+del timestamp_glrm_mod, timestamp_glrm_error, timestamp_wape, timestamp_arch_samples
 
 # update the column names in timestamp_arch_features
 timestamp_arch_features.columns = np.core.defchararray.add("Timestamp_", timestamp_arch_features.columns.astype(str))
@@ -206,10 +207,10 @@ weekly_price_change = weekly_price_change.drop_duplicates(subset = ["year", "qua
 weekly_price_change["timestamp"] = "Y" + weekly_price_change["year"].astype(str) + "_Q" + weekly_price_change["quarter"].astype(str) + "_M" + weekly_price_change["month"].astype(str) + "_W" + weekly_price_change["week"].astype(str)
 
 # convert weekly_price_change into wide format
-weekly_price_change = weekly_price_change.pivot_table(index = ["symbol"], columns = "timestamp", fill_value = np.nan, dropna = False)["adjclose_weekly_change"].reset_index()
+weekly_price_change = weekly_price_change.pivot_table(index = "timestamp", columns = "symbol")["adjclose_weekly_change"].dropna(axis = 1).reset_index()
 
 # reduce the dimensionality of weekly_price_change into 10 numerical features
-weekly_price_change_arch_features, weekly_price_change_glrm_mod, weekly_price_change_glrm_error, weekly_price_change_wape, weekly_price_change_arch_samples = machine_learning.unsupervised.projections.low_rank_model.grid.run(data_frame = weekly_price_change, 
+weekly_price_change_arch_features, weekly_price_change_glrm_mod, weekly_price_change_glrm_error, weekly_price_change_wape, weekly_price_change_arch_samples = machine_learning.unsupervised.projections.low_rank_model.grid.run(data_frame = weekly_price_change.copy(), 
                                                                                                                                                                                                                                 rank = [10], 
                                                                                                                                                                                                                                 left_regularization = ["L2"], 
                                                                                                                                                                                                                                 right_regularization = ["L2"], 
@@ -218,19 +219,93 @@ weekly_price_change_arch_features, weekly_price_change_glrm_mod, weekly_price_ch
                                                                                                                                                                                                                                 data_transformation = ["None"], 
                                                                                                                                                                                                                                 max_iterations = [1000], 
                                                                                                                                                                                                                                 min_step_size = [1e-4], 
-                                                                                                                                                                                                                                ignore_features = ["symbol"], 
+                                                                                                                                                                                                                                ignore_features = ["timestamp"], 
                                                                                                                                                                                                                                 cpu_fraction = 1, 
+                                                                                                                                                                                                                                ram_fraction = 1,
                                                                                                                                                                                                                                 grid_run_time = 2, 
                                                                                                                                                                                                                                 grid_size = 10, 
                                                                                                                                                                                                                                 seed = 3, 
                                                                                                                                                                                                                                 initialize_h2o = False, 
                                                                                                                                                                                                                                 shutdown_h2o = False, 
                                                                                                                                                                                                                                 display_progress = True)
+del weekly_price_change_arch_features, weekly_price_change_glrm_mod, weekly_price_change_glrm_error, weekly_price_change_wape
 
-# update the column names in weekly_price_change_arch_features and weekly_price_change_arch_samples
-weekly_price_change_arch_features.columns = np.core.defchararray.add("weekly_price_change_", weekly_price_change_arch_features.columns.astype(str))
+# remove anomalies from weekly_price_change_arch_samples
+weekly_price_change_arch_samples, irf, irf_pred = data_cleansing.anomalies.isolation_forest.single.run(data_frame = weekly_price_change_arch_samples, 
+                                                                                                       anomaly_fraction = 0.05, 
+                                                                                                       trees = 50, 
+                                                                                                       sample_fraction = 0.6320000291, 
+                                                                                                       min_samples = 1, 
+                                                                                                       max_depth = 14, 
+                                                                                                       feature_fraction_tree = 1, 
+                                                                                                       feature_fraction_split = None, 
+                                                                                                       ignore_features = ["Feature"], 
+                                                                                                       cpu_fraction = 1, 
+                                                                                                       ram_fraction = 1, 
+                                                                                                       model_run_time = 2, 
+                                                                                                       seed = 62, 
+                                                                                                       initialize_h2o = False, 
+                                                                                                       shutdown_h2o = False, 
+                                                                                                       display_progress = True)
+del irf, irf_pred
+
+# standardize weekly_price_change_arch_samples
+weekly_price_change_arch_samples_std = feature_engineering.standardize.run(data_frame = weekly_price_change_arch_samples, 
+                                                                           ignore_features = ["Feature"], 
+                                                                           prefix = "std_", 
+                                                                           display_progress = True)
+
+# cluster weekly_price_change_arch_samples_std with kmeans
+weekly_price_change_kmeans, km_mod, km_error, silhouette_kmeans = machine_learning.unsupervised.clustering.kmeans.grid.run(data_frame = weekly_price_change_arch_samples_std, 
+                                                                                                                           clusters = list(np.arange(4, 31, 1)), 
+                                                                                                                           standardize = [False], 
+                                                                                                                           max_iterations = [50], 
+                                                                                                                           ignore_features = ["Feature"], 
+                                                                                                                           cpu_fraction = 1, 
+                                                                                                                           ram_fraction = 1, 
+                                                                                                                           grid_run_time = 2, 
+                                                                                                                           grid_size = 50, 
+                                                                                                                           seed = 71, 
+                                                                                                                           initialize_h2o = False, 
+                                                                                                                           shutdown_h2o = False, 
+                                                                                                                           display_progress = True)
+del km_mod, km_error
+
+# cluster weekly_price_change_arch_samples_std with bayesian gaussian mixture
+weekly_price_change_gmix, mod, gmix_score, silhouette_gmix = machine_learning.unsupervised.clustering.gaussian_mixture.grid.run(data_frame = weekly_price_change_arch_samples_std, 
+                                                                                                                                grid_searches = 2, 
+                                                                                                                                grid_size = 50, 
+                                                                                                                                mutation_size = 7, 
+                                                                                                                                mutation = 0.2, 
+                                                                                                                                clusters = [7, 15, 20], 
+                                                                                                                                covariance_type = ["full", "tied", "spherical"], 
+                                                                                                                                weight_concentration_prior = [1/2, 1, 3/2],
+                                                                                                                                mean_precision_prior = [1/2, 1, 3/2], 
+                                                                                                                                iterations = 100, 
+                                                                                                                                initializations = 5, 
+                                                                                                                                cpu_fraction = 1, 
+                                                                                                                                ram_fraction = 1, 
+                                                                                                                                ignore_features = ["Feature"], 
+                                                                                                                                seed = 48, 
+                                                                                                                                display_progress = True)
+del mod
+
+# cluster weekly_price_change_arch_samples_std with random forest
+weekly_price_change_rf, mod, weekly_price_change_importance = machine_learning.unsupervised.clustering.random_forest.single.run(data_frame = weekly_price_change_arch_samples_std, 
+                                                                                                                                trees = 50, 
+                                                                                                                                min_samples = 5, 
+                                                                                                                                max_depth = 14, 
+                                                                                                                                min_split_loss = 0, 
+                                                                                                                                cpu_fraction = 1, 
+                                                                                                                                ignore_features = ["Feature"], 
+                                                                                                                                seed = 18, 
+                                                                                                                                display_progress = True)
+del mod
 
 
+
+
+weekly_price_change_optics
 
 
 
