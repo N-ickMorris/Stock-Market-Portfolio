@@ -262,7 +262,7 @@ weekly_price_change_arch_samples_std = feature_engineering.standardize.run(data_
 
 # cluster weekly_price_change_arch_samples_std with kmeans
 weekly_price_change_kmeans, km_mod, km_score, silhouette_kmeans = machine_learning.unsupervised.clustering.kmeans.grid.run(data_frame = weekly_price_change_arch_samples_std, 
-                                                                                                                           clusters = list(np.arange(4, 31, 1)), 
+                                                                                                                           clusters = list(np.arange(2, 31, 1)), 
                                                                                                                            standardize = [False], 
                                                                                                                            max_iterations = [50], 
                                                                                                                            ignore_features = ["Feature"], 
@@ -282,10 +282,10 @@ weekly_price_change_gmix, gmix_mod, gmix_score, silhouette_gmix = machine_learni
                                                                                                                                      grid_size = 50, 
                                                                                                                                      mutation_size = 7, 
                                                                                                                                      mutation = 0.2, 
-                                                                                                                                     clusters = [7, 15, 20], 
-                                                                                                                                     covariance_type = ["full", "tied", "spherical"], 
-                                                                                                                                     weight_concentration_prior = [1/2, 1, 3/2],
-                                                                                                                                     mean_precision_prior = [1/2, 1, 3/2], 
+                                                                                                                                     clusters = [5, 10, 15, 25], 
+                                                                                                                                     covariance_type = ["full", "tied", "diag", "spherical"], 
+                                                                                                                                     weight_concentration_prior = [0.05, 0.1, 0.2],
+                                                                                                                                     mean_precision_prior = [0.5, 1, 1.5], 
                                                                                                                                      iterations = 100, 
                                                                                                                                      initializations = 5, 
                                                                                                                                      cpu_fraction = 1, 
@@ -294,6 +294,21 @@ weekly_price_change_gmix, gmix_mod, gmix_score, silhouette_gmix = machine_learni
                                                                                                                                      seed = 48, 
                                                                                                                                      display_progress = True)
 del gmix_mod
+
+# cluster weekly_price_change with optics
+weekly_price_change_optics, optics_mod, optics_score, silhouette_optics = machine_learning.unsupervised.clustering.optics.grid.run(data_frame = weekly_price_change_arch_samples_std, 
+                                                                                                                                   grid_searches = 2, 
+                                                                                                                                   grid_size = 50, 
+                                                                                                                                   mutation_size = 5, 
+                                                                                                                                   mutation = 0.2, 
+                                                                                                                                   sample_fraction = [0.001, 0.02, 0.05, 0.1], 
+                                                                                                                                   min_steepness = [0.001, 0.02, 0.05, 0.1], 
+                                                                                                                                   cpu_fraction = 1, 
+                                                                                                                                   ram_fraction = 1, 
+                                                                                                                                   ignore_features = ["Feature"], 
+                                                                                                                                   seed = 48, 
+                                                                                                                                   display_progress = True)
+del optics_mod
 
 # cluster weekly_price_change_arch_samples_std with random forest
 weekly_price_change_rf, rf_mod, weekly_price_change_importance = machine_learning.unsupervised.clustering.random_forest.single.run(data_frame = weekly_price_change_arch_samples_std, 
@@ -309,24 +324,23 @@ del rf_mod
 
 # update the column names of clusterings
 weekly_price_change_kmeans.columns = ["symbol", "KM_Cluster"]
-weekly_price_change_gmix = weekly_price_change_gmix[["Feature", "Cluster"]]
-weekly_price_change_gmix.columns = ["symbol", "GM_Cluster"]
+weekly_price_change_gmix.columns = np.append(["symbol", "GM_Cluster"], weekly_price_change_gmix.columns[2:])
+weekly_price_change_optics.columns = ["symbol", "O_Cluster"]
+weekly_price_change_rf.columns = np.append(["symbol"], weekly_price_change_rf.columns[1:])
 
 # check out the mean silhouette coefficients
 km_score["Mean_Silhouette_Coefficient"][0]
 gmix_score["Mean_Silhouette_Coefficient"][0]
+optics_score["Mean_Silhouette_Coefficient"][0]
 
 # combine clusterings (except for optics)
 weekly_price_change_clusters = pd.concat([weekly_price_change_kmeans, 
-                                          weekly_price_change_gmix.drop(columns = ["symbol"])], axis = 1)
+                                          weekly_price_change_gmix[["GM_Cluster"]]], axis = 1)
 
 # convert weekly_price_change_clusters into binaries
 weekly_price_change_clusters = feature_engineering.dummies.run(data_frame = weekly_price_change_clusters, 
                                                                ignore_features = ["symbol"], 
                                                                display_progress = True)
-
-# add weekly_price_change_rf to weekly_price_change_clusters
-weekly_price_change_clusters = pd.concat([weekly_price_change_clusters, weekly_price_change_rf.drop(columns = ["Feature"])], axis = 1)
 
 # transpose weekly_price_change_clusters to create an incidence matrix
 weekly_price_change_incidence = weekly_price_change_clusters.drop(columns = ["symbol"]).T
@@ -387,7 +401,7 @@ nx.draw_networkx(G = weekly_price_change_graph,
                  pos = kk_positions,
                  labels = labels, 
                  node_size = 1200, 
-                 node_color = cc_colors, 
+                 node_color = gm_colors, 
                  width = 1)
 
 # plot the Fruchterman-Reingold graph
@@ -396,16 +410,16 @@ nx.draw_networkx(G = weekly_price_change_graph,
                  pos = fr_positions,
                  labels = labels, 
                  node_size = 1200, 
-                 node_color = cc_colors, 
+                 node_color = gm_colors, 
                  width = 1)
 
-# plot the Kamada-Kawai graph
+# plot the Spectral graph
 plt.figure()
 nx.draw_networkx(G = weekly_price_change_graph, 
                  pos = s_positions,
                  labels = labels, 
                  node_size = 1200, 
-                 node_color = cc_colors, 
+                 node_color = gm_colors, 
                  width = 1)
 
 # should we delete everything?
