@@ -20,6 +20,8 @@ import data_cleansing
 import feature_engineering
 import machine_learning
 import data_visualization
+import h2o
+from sklearn.metrics import silhouette_samples
 
 # miscellaneous modules
 import warnings
@@ -261,54 +263,54 @@ weekly_price_change_arch_samples_std = feature_engineering.standardize.run(data_
                                                                            display_progress = True)
 
 # cluster weekly_price_change_arch_samples_std with kmeans
-weekly_price_change_kmeans, km_mod, km_score, silhouette_kmeans = machine_learning.unsupervised.clustering.kmeans.grid.run(data_frame = weekly_price_change_arch_samples_std, 
-                                                                                                                           clusters = list(np.arange(2, 31, 1)), 
-                                                                                                                           standardize = [False], 
-                                                                                                                           max_iterations = [50], 
-                                                                                                                           ignore_features = ["Feature"], 
-                                                                                                                           cpu_fraction = 1, 
-                                                                                                                           ram_fraction = 1, 
-                                                                                                                           grid_run_time = 2, 
-                                                                                                                           grid_size = 50, 
-                                                                                                                           seed = 71, 
-                                                                                                                           initialize_h2o = False, 
-                                                                                                                           shutdown_h2o = False, 
-                                                                                                                           display_progress = True)
+weekly_price_change_kmeans, km_mod, km_score, silhouette_kmeans, weekly_price_change_distance = machine_learning.unsupervised.clustering.kmeans.grid.run(data_frame = weekly_price_change_arch_samples_std, 
+                                                                                                                                                         clusters = list(np.arange(2, 31, 1)), 
+                                                                                                                                                         standardize = [False], 
+                                                                                                                                                         max_iterations = [50], 
+                                                                                                                                                         ignore_features = ["Feature"], 
+                                                                                                                                                         cpu_fraction = 1, 
+                                                                                                                                                         ram_fraction = 1, 
+                                                                                                                                                         grid_run_time = 2, 
+                                                                                                                                                         grid_size = 50, 
+                                                                                                                                                         seed = 71, 
+                                                                                                                                                         initialize_h2o = False, 
+                                                                                                                                                         shutdown_h2o = False, 
+                                                                                                                                                         display_progress = True)
 del km_mod
 
 # cluster weekly_price_change_arch_samples_std with bayesian gaussian mixture
-weekly_price_change_gmix, gmix_mod, gmix_score, silhouette_gmix = machine_learning.unsupervised.clustering.gaussian_mixture.grid.run(data_frame = weekly_price_change_arch_samples_std, 
-                                                                                                                                     grid_searches = 2, 
-                                                                                                                                     grid_size = 50, 
-                                                                                                                                     mutation_size = 7, 
-                                                                                                                                     mutation = 0.2, 
-                                                                                                                                     clusters = [5, 10, 15, 25], 
-                                                                                                                                     covariance_type = ["full", "tied", "diag", "spherical"], 
-                                                                                                                                     weight_concentration_prior = [0.05, 0.1, 0.2],
-                                                                                                                                     mean_precision_prior = [0.5, 1, 1.5], 
-                                                                                                                                     iterations = 100, 
-                                                                                                                                     initializations = 5, 
-                                                                                                                                     cpu_fraction = 1, 
-                                                                                                                                     ram_fraction = 1, 
-                                                                                                                                     ignore_features = ["Feature"], 
-                                                                                                                                     seed = 48, 
-                                                                                                                                     display_progress = True)
-del gmix_mod
+weekly_price_change_gmix, gmix_mod, gmix_score, silhouette_gmix, distance = machine_learning.unsupervised.clustering.gaussian_mixture.grid.run(data_frame = weekly_price_change_arch_samples_std, 
+                                                                                                                                               grid_searches = 2, 
+                                                                                                                                               grid_size = 50, 
+                                                                                                                                               mutation_size = 7, 
+                                                                                                                                               mutation = 0.2, 
+                                                                                                                                               clusters = [5, 10, 15, 25], 
+                                                                                                                                               covariance_type = ["full", "tied", "diag", "spherical"], 
+                                                                                                                                               weight_concentration_prior = [0.05, 0.1, 0.2],
+                                                                                                                                               mean_precision_prior = [0.5, 1, 1.5], 
+                                                                                                                                               iterations = 100, 
+                                                                                                                                               initializations = 5, 
+                                                                                                                                               cpu_fraction = 1, 
+                                                                                                                                               ram_fraction = 1, 
+                                                                                                                                               ignore_features = ["Feature"], 
+                                                                                                                                               seed = 48, 
+                                                                                                                                               display_progress = True)
+del gmix_mod, distance
 
 # cluster weekly_price_change with optics
-weekly_price_change_optics, optics_mod, optics_score, silhouette_optics = machine_learning.unsupervised.clustering.optics.grid.run(data_frame = weekly_price_change_arch_samples_std, 
-                                                                                                                                   grid_searches = 2, 
-                                                                                                                                   grid_size = 50, 
-                                                                                                                                   mutation_size = 5, 
-                                                                                                                                   mutation = 0.2, 
-                                                                                                                                   sample_fraction = [0.001, 0.02, 0.05, 0.1], 
-                                                                                                                                   min_steepness = [0.001, 0.02, 0.05, 0.1], 
-                                                                                                                                   cpu_fraction = 1, 
-                                                                                                                                   ram_fraction = 1, 
-                                                                                                                                   ignore_features = ["Feature"], 
-                                                                                                                                   seed = 48, 
-                                                                                                                                   display_progress = True)
-del optics_mod
+weekly_price_change_optics, optics_mod, optics_score, silhouette_optics, distance = machine_learning.unsupervised.clustering.optics.grid.run(data_frame = weekly_price_change_arch_samples_std, 
+                                                                                                                                             grid_searches = 2, 
+                                                                                                                                             grid_size = 50, 
+                                                                                                                                             mutation_size = 5, 
+                                                                                                                                             mutation = 0.2, 
+                                                                                                                                             sample_fraction = [0.001, 0.02, 0.05, 0.1], 
+                                                                                                                                             min_steepness = [0.001, 0.02, 0.05, 0.1], 
+                                                                                                                                             cpu_fraction = 1, 
+                                                                                                                                             ram_fraction = 1, 
+                                                                                                                                             ignore_features = ["Feature"], 
+                                                                                                                                             seed = 48, 
+                                                                                                                                             display_progress = True)
+del optics_mod, distance
 
 # cluster weekly_price_change_arch_samples_std with random forest
 weekly_price_change_rf, rf_mod, weekly_price_change_importance = machine_learning.unsupervised.clustering.random_forest.single.run(data_frame = weekly_price_change_arch_samples_std, 
@@ -350,6 +352,11 @@ weekly_price_change_incidence.columns = weekly_price_change_clusters["symbol"]
 weekly_price_change_cc, weekly_price_change_graph, weekly_price_change_adjacency = machine_learning.unsupervised.clustering.connected_components.single.run(incidence_data_frame = weekly_price_change_incidence, 
                                                                                                                                                             ignore_features = None, 
                                                                                                                                                             display_progress = True)
+
+
+
+# compute the silhouette coefficients for connected components
+silhouette_cc = pd.DataFrame({"Silhouette_Coefficient": silhouette_samples(X = weekly_price_change_distance, labels = np.array(weekly_price_change_cc["Cluster"]), metric = "precomputed")})
 
 # rename the columns in weekly_price_change_cc
 weekly_price_change_cc.columns = np.append(["CC_Cluster"], weekly_price_change_cc.columns[1:])
@@ -421,6 +428,13 @@ nx.draw_networkx(G = weekly_price_change_graph,
                  node_size = 1200, 
                  node_color = gm_colors, 
                  width = 1)
+
+
+
+
+
+
+
 
 # should we delete everything?
 clean_work_space = False
