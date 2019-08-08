@@ -333,9 +333,12 @@ weekly_price_change_incidence = weekly_price_change_clusters.drop(columns = ["sy
 weekly_price_change_incidence.columns = weekly_price_change_clusters["symbol"]
 
 # cluster the incidence matrix using connected components
-weekly_price_change_cc, cc_graph = machine_learning.unsupervised.clustering.connected_components.single.run(incidence_data_frame = weekly_price_change_incidence, 
-                                                                                                            ignore_features = None, 
-                                                                                                            display_progress = True)
+weekly_price_change_cc, weekly_price_change_graph, weekly_price_change_adjacency = machine_learning.unsupervised.clustering.connected_components.single.run(incidence_data_frame = weekly_price_change_incidence, 
+                                                                                                                                                            ignore_features = None, 
+                                                                                                                                                            display_progress = True)
+
+# rename the columns in weekly_price_change_cc
+weekly_price_change_cc.columns = np.append(["CC_Cluster"], weekly_price_change_cc.columns[1:])
 
 # create a list of colors
 color_list = ["#0099ff",
@@ -347,44 +350,63 @@ color_list = ["#0099ff",
               "#97b9d2",
               "#984ea3",
               "#a65628",
-              "#decc68",
               "#ff4545",
               "#ff7f00",
               "#ff96ca",
               "#ffc100",
-              "#fff654"]
-
-# open a plot window for the graph
-plt.figure()
-
-# get the position of each node
-pos = nx.kamada_kawai_layout(cc_graph)
+              "#fff654",
+              "#f2d8ae",
+              "#c09ecc",
+              "#df5e3d",
+              "#fa7e7e",
+              "#eab16a",
+              "#ffa23d",
+              "#ff1493",
+              "#b0b0b8",
+              "#dddddd",
+              "#be7759",
+              "#6a6c60"]
 
 # get the labels
-labels = {i : weekly_price_change_incidence.columns[i] for i in cc_graph.nodes()}
+labels = {i : weekly_price_change_cc.index.values[i] for i in weekly_price_change_graph.nodes()}
+
+# get the positions
+kk_positions = {i : np.array(weekly_price_change_cc[["KK_x_coordinate", "KK_y_coordinate"]].iloc[i]) for i in weekly_price_change_graph.nodes()}
+fr_positions = {i : np.array(weekly_price_change_cc[["FR_x_coordinate", "FR_y_coordinate"]].iloc[i]) for i in weekly_price_change_graph.nodes()}
+s_positions = {i : np.array(weekly_price_change_cc[["S_x_coordinate", "S_y_coordinate"]].iloc[i]) for i in weekly_price_change_graph.nodes()}
 
 # get the node colors
-colors = [color_list[i] for i in weekly_price_change_cc["Cluster"]]
-colors = [color_list[i] for i in weekly_price_change_kmeans["KM_Cluster"]]
-colors = [color_list[i] for i in weekly_price_change_gmix["GM_Cluster"]]
+np.random.shuffle(color_list)
+km_colors = [color_list[i] for i in weekly_price_change_kmeans["KM_Cluster"]]
+gm_colors = [color_list[i] for i in weekly_price_change_gmix["GM_Cluster"]]
+cc_colors = [color_list[i] for i in weekly_price_change_cc["CC_Cluster"]]
 
-# plot the graph
-nx.draw_kamada_kawai(G = cc_graph, 
-                     labels = labels, 
-                     node_size = 1200, 
-                     node_color = colors, 
-                     width = 1)
+# plot the Kamada-Kawai graph
+plt.figure()
+nx.draw_networkx(G = weekly_price_change_graph, 
+                 pos = kk_positions,
+                 labels = labels, 
+                 node_size = 1200, 
+                 node_color = cc_colors, 
+                 width = 1)
 
-# get the position of each node as a data frame
-cc_positions = pd.DataFrame(pos).T
-cc_positions.columns = ["x_coordinate", "y_coordinate"]
+# plot the Fruchterman-Reingold graph
+plt.figure()
+nx.draw_networkx(G = weekly_price_change_graph, 
+                 pos = fr_positions,
+                 labels = labels, 
+                 node_size = 1200, 
+                 node_color = cc_colors, 
+                 width = 1)
 
-# add the symbols and clusters to cc_positions
-cc_positions = pd.concat([weekly_price_change_clusters[["symbol"]], weekly_price_change_kmeans[["KM_Cluster"]], cc_positions], axis = 1)
-
-
-
-
+# plot the Kamada-Kawai graph
+plt.figure()
+nx.draw_networkx(G = weekly_price_change_graph, 
+                 pos = s_positions,
+                 labels = labels, 
+                 node_size = 1200, 
+                 node_color = cc_colors, 
+                 width = 1)
 
 # should we delete everything?
 clean_work_space = False
